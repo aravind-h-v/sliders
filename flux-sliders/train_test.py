@@ -109,8 +109,8 @@ logging.set_verbosity_error()
 modules = DEFAULT_TARGET_REPLACE
 
 
-# pretrained_model_name_or_path = "black-forest-labs/FLUX.1-dev"
-pretrained_model_name_or_path = "black-forest-labs/FLUX.1-schnell"
+pretrained_model_name_or_path = "black-forest-labs/FLUX.1-dev"
+# pretrained_model_name_or_path = "black-forest-labs/FLUX.1-schnell"
 # pretrained_model_name_or_path = "../../../models/FLUX.1-schnell"
 weight_dtype = torch.bfloat16
 
@@ -140,15 +140,15 @@ training_eta = 1
 lr = 0.002
 
 
-slider_name = 'person-obese-mod'
+slider_name = 'test-to_out_0'
 output_dir = 'outputs/' + slider_name + '/'
 
 os.makedirs(output_dir, exist_ok=True)
 
 
 target_prompt = 'picture of a person'
-positive_prompt = 'photo of a person, very fat, obese'
-negative_prompt = 'photo of a person, very thin'
+positive_prompt = 'picture of a very fat, obese person'
+negative_prompt = 'picture of a very thin, athletic person'
 
 # lora params
 alpha = 1
@@ -193,9 +193,9 @@ save_config = {
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
     
-#save config in output_dir
+# Save config in output_dir with pretty formatting
 with open(f'{output_dir}/config.json', 'w') as f:
-    json.dump(save_config, f)
+    json.dump(save_config, f, indent=4)  # Add indent=4 for pretty printing
 
 def flush():
     torch.cuda.empty_cache()

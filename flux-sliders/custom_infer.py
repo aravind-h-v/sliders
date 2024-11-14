@@ -106,9 +106,31 @@ def run_inference(
     )
     pipe.set_progress_bar_config(disable=True)
 
+    # Generate base image without LoRA
+    os.makedirs(output_dir, exist_ok=True)
+    seed = random.randint(0, 2**15)
+    print('Generating base image without LoRA')
+    with torch.no_grad():
+        image = pipe(
+            target_prompt,
+            height=height,
+            width=width,
+            guidance_scale=guidance_scale,
+            num_inference_steps=num_inference_steps,
+            max_sequence_length=max_sequence_length,
+            num_images_per_prompt=1,
+            generator=torch.Generator().manual_seed(seed),
+            from_timestep=0,
+            till_timestep=None,
+            output_type='pil',
+            network=None,
+            skip_slider_timestep_till=0,
+        )
+    img_filename = f"no_lora_seed_{seed}.png"
+    image.images[0].save(os.path.join(output_dir, img_filename))
+
     # Load LoRA networks
     networks = {}
-    
     lora_files = sorted(Path(lora_path).glob("slider_*.pt"))
     print(f'Loading {len(lora_files)} sliders from {lora_path}')
     for i, lora_file in enumerate(lora_files):
@@ -152,34 +174,31 @@ def run_inference(
         #             print(f"Effective weight range: {effective_weight.min().item():.6f} to {effective_weight.max().item():.6f}")
         #             print(f"Effective weight mean: {effective_weight.mean().item():.6f}")
 
-    # Generate images
-    os.makedirs(output_dir, exist_ok=True)
-    seeds = [random.randint(0, 2**15) for _ in range(num_images)]
-    print(f'Generating {num_images} images with {len(networks)} sliders')
+    print('Generating images with different LoRA strengths')
+    scales = [-5, -1, 0, 1, 5]
     for net in networks:
-        print(f'Generating with Slider {net}')
-        for idx in range(num_images):
-            seed = seeds[idx]
-            for slider_scale in [-5, -1, 0, 1, 5]:
-                networks[net].set_lora_slider(scale=slider_scale)
-                with torch.no_grad():
-                    image = pipe(
-                        target_prompt,
-                        height=height,
-                        width=width,
-                        guidance_scale=guidance_scale,
-                        num_inference_steps=num_inference_steps,
-                        max_sequence_length=max_sequence_length,
-                        num_images_per_prompt=1,
-                        generator=torch.Generator().manual_seed(seed),
-                        from_timestep=0,
-                        till_timestep=None,
-                        output_type='pil',
-                        network=networks[net],
-                        skip_slider_timestep_till=0,
-                    )
-                img_filename = f"slider_{net}_seed_{seed}_scale_{slider_scale}.png"
-                image.images[0].save(os.path.join(output_dir, img_filename))
+        for scale in scales:
+            print(f'Generating image with LoRA strength {scale}')
+            networks[net].set_lora_slider(scale=scale)
+            with torch.no_grad():
+                image = pipe(
+                    target_prompt,
+                    height=height,
+                    width=width,
+                    guidance_scale=guidance_scale,
+                    num_inference_steps=num_inference_steps,
+                    max_sequence_length=max_sequence_length,
+                    num_images_per_prompt=1,
+                    generator=torch.Generator().manual_seed(seed),  # Using same seed
+                    from_timestep=0,
+                    till_timestep=None,
+                    output_type='pil',
+                    network=networks[net],
+                    skip_slider_timestep_till=0,
+                )
+            img_filename = f"slider_{net}_seed_{seed}_scale_{scale}.png"
+            image.images[0].save(os.path.join(output_dir, img_filename))
+        break  # Only generate for first LoRA network
     
     print("Inference completed.")
 
